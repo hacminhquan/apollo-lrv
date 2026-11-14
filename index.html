@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apollo LRV — Lunar Field Simulator</title>
+    <meta name="description" content="Explore the Apollo Lunar Roving Vehicle through an interactive procedural 3D engineering simulator." />
+    <meta name="theme-color" content="#776963" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Apollo LRV — Lunar Field Simulator" />
+    <meta property="og:description" content="Explore the Apollo Lunar Roving Vehicle through an interactive procedural 3D engineering simulator." />
+    <meta name="twitter:card" content="summary" />
+    <link rel="canonical" href="/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #776963;
+        --bg-deep: #665852;
+        --ink: #292522;
+        --ink-soft: rgba(41, 37, 34, 0.88);
+        --muted: #b8aaa0;
+        --muted-2: #927f75;
+        --line: rgba(226, 213, 202, 0.22);
+        --line-strong: rgba(226, 213, 202, 0.38);
+        --aluminium: #c3b8a8;
+        --gold: #b58a50;
+        --bronze: #95673e;
+        --dark: #34302d;
+        --orange: #f5793a;
+        --ivory: #e6ded1;
+        --green: #a8c78e;
+        --shadow: 0 12px 38px rgba(25, 19, 16, 0.24);
+        --mono: "JetBrains Mono", monospace;
+        --sans: "Inter", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; }
+      body {
+        overflow: hidden;
+        color: var(--ivory);
+        background: var(--bg);
+        font-family: var(--sans);
+        letter-spacing: -0.01em;
+      }
+      button { font: inherit; }
+      .app-shell { position: relative; width: 100vw; height: 100vh; min-height: 640px; overflow: hidden; background: var(--bg); }
+      #stage { position: absolute; inset: 0; z-index: 0; }
+      #stage canvas { display: block; width: 100%; height: 100%; outline: none; }
+      .vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(circle at 50% 46%, transparent 35%, rgba(38, 29, 25, 0.17) 100%); }
+      .ui-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+      .ui-layer > * { pointer-events: auto; }
+      .mono { font-family: var(--mono); }
+      .eyebrow { color: var(--muted); font: 600 9px/1.1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+      .micro { color: var(--muted); font: 500 8px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+      .panel { border: 1px solid var(--line); background: linear-gradient(135deg, rgba(47, 39, 36, 0.88), rgba(36, 31, 28, 0.74)); box-shadow: var(--shadow); backdrop-filter: blur(14px); }
+
+      .topbar { position: absolute; top: 18px; left: 22px; right: 22px; display: grid; grid-template-columns: minmax(300px, 1fr) minmax(300px, 0.8fr) minmax(235px, 0.65fr); gap: 18px; align-items: start; }
+      .brand-block { display: flex; align-items: flex-start; gap: 12px; }
+      .insignia { position: relative; display: grid; place-items: center; width: 47px; height: 47px; flex: 0 0 auto; border: 1px solid rgba(245, 121, 58, 0.8); color: var(--orange); font: 800 11px/1 var(--mono); letter-spacing: 0.04em; }
+      .insignia::before, .insignia::after { content: ""; position: absolute; background: var(--orange); }
+      .insignia::before { width: 1px; height: 64px; left: 22px; top: -9px; opacity: .35; }
+      .insignia::after { height: 1px; width: 64px; left: -9px; top: 22px; opacity: .35; }
+      .brand-copy { padding-top: 2px; }
+      .brand-copy .program { color: var(--ivory); font: 600 10px/1.3 var(--mono); letter-spacing: 0.16em; }
+      .brand-copy h1 { margin: 5px 0 4px; color: var(--ivory); font-size: clamp(23px, 2.3vw, 37px); line-height: .96; letter-spacing: -0.065em; font-weight: 700; }
+      .brand-copy .subtitle { color: var(--muted); font: 500 9px/1.3 var(--mono); letter-spacing: .12em; }
+      .corner-code { position: absolute; top: 0; left: 61px; color: var(--orange); font: 700 9px var(--mono); }
+      .power-monitor { align-self: start; padding-top: 3px; }
+      .power-monitor-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 9px; }
+      .power-monitor-title { color: var(--ivory); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
+      .power-monitor-value { color: var(--orange); font: 600 13px var(--mono); }
+      .power-strip { display: grid; grid-template-columns: repeat(50, 1fr); gap: 2px; height: 14px; }
+      .power-cell { border-radius: 1px; background: rgba(230, 222, 209, .18); transition: background .15s ease; }
+      .power-cell.active { background: var(--orange); box-shadow: 0 0 7px rgba(245, 121, 58, .38); }
+      .power-legend { display: flex; justify-content: space-between; margin-top: 7px; color: var(--muted); font: 500 8px var(--mono); letter-spacing: .1em; }
+      .mission-meta { justify-self: end; display: grid; grid-template-columns: repeat(2, minmax(92px, 1fr)); gap: 10px 18px; min-width: 230px; padding-top: 3px; }
+      .meta-item { border-left: 1px solid var(--line-strong); padding-left: 9px; }
+      .meta-item .meta-value { margin-top: 4px; color: var(--ivory); font: 600 11px var(--mono); letter-spacing: .04em; white-space: nowrap; }
+      .status-dot { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(168, 199, 142, .7); }
+
+      .left-rail, .right-rail { position: absolute; top: 116px; bottom: 126px; display: flex; flex-direction: column; gap: 9px; width: 218px; }
+      .left-rail { left: 22px; }
+      .right-rail { right: 22px; width: 232px; }
+      .card { padding: 13px 14px 12px; border-radius: 2px; }
+      .card-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid var(--line); }
+      .card-heading .index { color: var(--orange); font: 600 9px var(--mono); }
+      .card-heading h2 { margin: 0; color: var(--ivory); font-size: 10px; letter-spacing: .12em; font-weight: 700; }
+      .metric-row { display: flex; align-items: baseline; justify-content: space-between; min-height: 21px; }
+      .metric-row .metric-label { color: var(--muted); font: 500 8px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+      .metric-row .metric-value { color: var(--ivory); font: 600 11px var(--mono); }
+      .metric-row .metric-value.accent { color: var(--orange); }
+      .metric-row .metric-value.green { color: var(--green); }
+      .metric-large { display: flex; align-items: baseline; gap: 5px; margin: 3px 0 7px; }
+      .metric-large strong { color: var(--ivory); font: 500 27px/1 var(--mono); letter-spacing: -.08em; }
+      .metric-large span { color: var(--muted); font: 500 9px var(--mono); }
+      .divider { height: 1px; margin: 8px 0; background: var(--line); }
+      .traction { display: flex; align-items: end; gap: 2px; height: 30px; margin-top: 5px; }
+      .traction i { flex: 1; min-width: 2px; height: 20%; background: rgba(245, 121, 58, .35); transform-origin: bottom; transition: height .2s ease; }
+      .traction i:nth-child(3n) { background: rgba(230, 222, 209, .28); }
+      .traction i.live { background: var(--orange); }
+      .battery-line { display: flex; align-items: center; gap: 5px; margin-top: 8px; }
+      .battery-line span { width: 10px; height: 6px; border: 1px solid rgba(230, 222, 209, .38); background: var(--orange); }
+      .battery-line span:last-child { background: rgba(230, 222, 209, .18); }
+      .suspension-row { margin: 7px 0; }
+      .suspension-meta { display: flex; justify-content: space-between; color: var(--muted); font: 500 8px var(--mono); text-transform: uppercase; }
+      .suspension-meta b { color: var(--ivory); font-weight: 500; }
+      .travel-track { height: 4px; margin-top: 4px; background: rgba(230, 222, 209, .15); }
+      .travel-fill { width: 48%; height: 100%; background: var(--orange); transition: width .2s ease; }
+      .compass-wrap { display: flex; align-items: center; gap: 12px; }
+      .compass { position: relative; display: grid; place-items: center; width: 64px; height: 64px; flex: 0 0 auto; border: 1px solid rgba(230, 222, 209, .32); border-radius: 50%; }
+      .compass::before, .compass::after { content: ""; position: absolute; background: rgba(230, 222, 209, .28); }
+      .compass::before { width: 1px; height: 52px; }
+      .compass::after { width: 52px; height: 1px; }
+      .compass-arrow { position: absolute; left: 29px; top: 8px; width: 5px; height: 25px; transform-origin: 3px 24px; background: var(--orange); clip-path: polygon(50% 0, 100% 100%, 50% 77%, 0 100%); transition: transform .25s ease; }
+      .compass-label { position: absolute; color: var(--muted); font: 600 7px var(--mono); }
+      .compass-label.n { top: 5px; } .compass-label.s { bottom: 5px; } .compass-label.e { right: 6px; } .compass-label.w { left: 6px; }
+      .nav-stats { flex: 1; }
+      .nav-stats .metric-row { min-height: 20px; }
+      .assembly-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+      .assembly-btn, .toggle-btn { cursor: pointer; border: 1px solid var(--line); border-radius: 2px; background: rgba(230, 222, 209, .05); color: var(--muted); font: 600 8px var(--mono); letter-spacing: .05em; text-align: left; transition: all .18s ease; }
+      .assembly-btn { padding: 8px 7px; }
+      .assembly-btn:hover, .assembly-btn.active, .toggle-btn:hover, .toggle-btn.active { color: var(--ivory); border-color: var(--orange); background: rgba(245, 121, 58, .14); }
+      .toggle-row { display: flex; align-items: center; justify-content: space-between; min-height: 27px; border-bottom: 1px solid rgba(230, 222, 209, .1); }
+      .toggle-row:last-child { border-bottom: 0; }
+      .toggle-label { color: var(--muted); font: 500 8px var(--mono); letter-spacing: .08em; }
+      .toggle-btn { width: 30px; height: 15px; padding: 2px; border-radius: 10px; }
+      .toggle-btn::after { content: ""; display: block; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); transition: transform .18s ease, background .18s ease; }
+      .toggle-btn.active::after { transform: translateX(13px); background: var(--orange); }
+      .subsystem-list { display: grid; gap: 5px; }
+      .subsystem-row { display: flex; align-items: center; gap: 7px; min-height: 18px; color: var(--muted); font: 500 8px var(--mono); letter-spacing: .02em; }
+      .subsystem-row .sub-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 7px rgba(168,199,142,.5); }
+      .subsystem-row .sub-status { margin-left: auto; color: var(--green); font-size: 7px; }
+
+      .mode-strip { position: absolute; left: 50%; bottom: 133px; transform: translateX(-50%); width: min(520px, 42vw); text-align: center; }
+      .mode-kicker { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--orange); font: 600 9px var(--mono); letter-spacing: .2em; }
+      .mode-kicker::before, .mode-kicker::after { content: ""; width: 28px; height: 1px; background: var(--orange); opacity: .6; }
+      .mode-name { margin: 4px 0 3px; color: var(--ivory); font-size: clamp(22px, 2.8vw, 38px); line-height: 1; letter-spacing: -.07em; font-weight: 700; }
+      .mode-description { color: var(--muted); font: 500 9px var(--mono); letter-spacing: .05em; }
+
+      .operation-log { position: absolute; left: 50%; right: 22px; bottom: 22px; transform: translateX(-50%); width: min(750px, calc(100% - 500px)); padding: 12px 14px 11px; border-radius: 2px; }
+      .operation-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+      .operation-title { color: var(--ivory); font: 700 10px var(--mono); letter-spacing: .12em; }
+      .operation-title span { color: var(--orange); }
+      .play-btn { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; padding: 5px 9px; border: 1px solid var(--orange); border-radius: 2px; background: transparent; color: var(--orange); font: 600 8px var(--mono); letter-spacing: .08em; }
+      .play-btn:hover { background: rgba(245, 121, 58, .16); }
+      .play-icon { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid currentColor; }
+      .play-icon.pause { width: 7px; height: 10px; border: 0; border-left: 2px solid currentColor; border-right: 2px solid currentColor; }
+      .timeline-wrap { position: relative; padding: 10px 0 2px; }
+      .timeline-track { position: relative; height: 4px; cursor: pointer; border-radius: 3px; background: rgba(230, 222, 209, .2); }
+      .timeline-progress { width: 0%; height: 100%; border-radius: 3px; background: var(--orange); box-shadow: 0 0 7px rgba(245, 121, 58, .55); }
+      .timeline-thumb { position: absolute; top: 50%; left: 0%; width: 10px; height: 10px; border: 2px solid var(--ivory); border-radius: 50%; background: var(--orange); transform: translate(-50%, -50%); box-shadow: 0 0 0 3px rgba(245, 121, 58, .2); }
+      .timeline-marker { position: absolute; top: -4px; width: 1px; height: 12px; background: rgba(230, 222, 209, .58); }
+      .timeline-marker b { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); color: var(--muted); font: 500 7px var(--mono); white-space: nowrap; }
+      .timeline-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; color: var(--muted); font: 500 8px var(--mono); letter-spacing: .08em; }
+      .timeline-meta strong { color: var(--ivory); font-weight: 500; }
+      .operator-actions { display: flex; gap: 5px; margin-top: 7px; }
+      .operator-action { flex: 1; height: 3px; background: rgba(230, 222, 209, .17); }
+      .operator-action.active { background: var(--orange); }
+
+      .footer { position: absolute; left: 22px; right: 22px; bottom: 5px; display: flex; align-items: center; justify-content: space-between; color: rgba(230, 222, 209, .58); font: 500 7px var(--mono); letter-spacing: .1em; pointer-events: none; }
+      .footer span:last-child { color: rgba(245, 121, 58, .72); }
+      .interaction-hint { position: absolute; top: 113px; left: 50%; transform: translateX(-50%); color: rgba(230, 222, 209, .48); font: 500 8px var(--mono); letter-spacing: .15em; text-transform: uppercase; pointer-events: none; }
+      .label-layer { position: absolute; inset: 0; pointer-events: none; }
+      .component-label { position: absolute; display: flex; align-items: center; gap: 6px; color: var(--ivory); font: 600 8px var(--mono); letter-spacing: .1em; white-space: nowrap; opacity: 0; transform: translate(-50%, -50%); transition: opacity .16s ease; }
+      .component-label.show { opacity: 1; }
+      .component-label::before { content: ""; width: 25px; height: 1px; background: var(--orange); box-shadow: 0 0 5px rgba(245, 121, 58, .7); }
+      .component-label::after { content: ""; position: absolute; left: -7px; top: 50%; width: 5px; height: 5px; border: 1px solid var(--orange); border-radius: 50%; transform: translateY(-50%); background: var(--bg-deep); }
+      .toast { position: absolute; top: 96px; left: 50%; padding: 8px 12px; border: 1px solid var(--orange); background: rgba(41, 37, 34, .92); color: var(--ivory); font: 600 8px var(--mono); letter-spacing: .1em; opacity: 0; transform: translate(-50%, -8px); transition: opacity .2s ease, transform .2s ease; pointer-events: none; }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+      .loading-cover { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: var(--bg); transition: opacity .6s ease, visibility .6s ease; }
+      .loading-cover.hidden { opacity: 0; visibility: hidden; }
+      .loader-box { width: 240px; text-align: center; }
+      .loader-kicker { color: var(--orange); font: 600 9px var(--mono); letter-spacing: .18em; }
+      .loader-title { margin: 10px 0 14px; color: var(--ivory); font-size: 23px; font-weight: 700; letter-spacing: -.06em; }
+      .loader-line { height: 3px; background: rgba(230, 222, 209, .16); }
+      .loader-line i { display: block; width: 0; height: 100%; background: var(--orange); animation: load 1.25s ease forwards; }
+      .loader-caption { margin-top: 8px; color: var(--muted); font: 500 8px var(--mono); letter-spacing: .08em; }
+      @keyframes load { to { width: 100%; } }
+
+      @media (max-width: 1120px) {
+        .topbar { grid-template-columns: 1fr minmax(250px, .7fr); }
+        .mission-meta { display: none; }
+        .left-rail, .right-rail { width: 190px; }
+        .right-rail { width: 200px; }
+        .operation-log { width: min(680px, calc(100% - 430px)); }
+      }
+      @media (max-width: 860px) {
+        .app-shell { min-height: 720px; overflow: auto; }
+        body { overflow: auto; }
+        .topbar { position: relative; top: 0; left: 0; right: 0; display: block; padding: 15px 15px 0; }
+        .brand-copy h1 { font-size: 27px; }
+        .power-monitor { display: none; }
+        .left-rail, .right-rail { top: auto; bottom: auto; width: calc(50% - 20px); gap: 7px; }
+        .left-rail { left: 12px; top: 105px; }
+        .right-rail { right: 12px; top: 105px; }
+        .left-rail .card:nth-child(3), .right-rail .card:nth-child(4) { display: none; }
+        .card { padding: 10px; }
+        .mode-strip { bottom: 162px; width: 90vw; }
+        .operation-log { left: 12px; right: 12px; bottom: 35px; width: auto; transform: none; }
+        .footer { left: 12px; right: 12px; bottom: 12px; }
+        .footer span:last-child { display: none; }
+        .interaction-hint { top: 79px; }
+      }
+      @media (max-width: 560px) {
+        .brand-block { gap: 9px; }
+        .insignia { width: 38px; height: 38px; font-size: 9px; }
+        .insignia::before { height: 51px; left: 18px; top: -7px; }
+        .insignia::after { width: 51px; left: -7px; top: 18px; }
+        .brand-copy .program { font-size: 8px; }
+        .brand-copy h1 { font-size: 22px; }
+        .brand-copy .subtitle { font-size: 7px; }
+        .left-rail, .right-rail { top: 96px; }
+        .metric-large strong { font-size: 22px; }
+        .assembly-grid { gap: 3px; }
+        .assembly-btn { padding: 6px 5px; font-size: 7px; }
+        .mode-strip { bottom: 175px; }
+        .mode-name { font-size: 25px; }
+        .mode-description { max-width: 90vw; margin: auto; font-size: 7px; }
+        .timeline-marker b { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell" aria-label="Apollo LRV Lunar Field Simulator">
+      <div id="stage" aria-label="Interactive procedural 3D lunar rover canvas"></div>
+      <div class="vignette"></div>
+      <div class="ui-layer">
+        <header class="topbar">
+          <div class="brand-block">
+            <div class="insignia" aria-label="Apollo LRV insignia">LRV-1</div>
+            <div class="brand-copy">
+              <div class="corner-code">A-15 / 1971</div>
+              <div class="program">APOLLO LUNAR EXPLORATION PROGRAM</div>
+              <h1>Lunar Roving Vehicle</h1>
+              <div class="subtitle">ELECTRIC MOBILITY PLATFORM / LUNAR SURFACE OPERATIONS</div>
+            </div>
+          </div>
+          <div class="power-monitor">
+            <div class="power-monitor-head"><div class="power-monitor-title">POWER LOAD <span class="mono" style="color:var(--muted)">/ MOBILITY BUS</span></div><div id="power-load" class="power-monitor-value">64%</div></div>
+            <div id="power-strip" class="power-strip" aria-label="50-cell vehicle power and mobility indicator"></div>
+            <div class="power-legend"><span>DRIVE <b id="drive-state">NOMINAL</b></span><span>STEERING <b id="steering-state">TRIM</b></span><span>SUSPENSION <b id="suspension-state">ACTIVE</b></span></div>
+          </div>
+          <div class="mission-meta">
+            <div class="meta-item"><div class="eyebrow">VEHICLE ID</div><div class="meta-value">LRV-001</div></div>
+            <div class="meta-item"><div class="eyebrow">MISSION</div><div class="meta-value">APOLLO 15</div></div>
+            <div class="meta-item"><div class="eyebrow">RUNTIME</div><div id="runtime" class="meta-value">00:00:00</div></div>
+            <div class="meta-item"><div class="eyebrow">STATUS</div><div class="meta-value"><i class="status-dot"></i><span id="status">NOMINAL</span></div></div>
+            <div class="meta-item" style="grid-column: 1 / -1"><div class="eyebrow">LOCATION</div><div class="meta-value">HADLEY-APENNINE</div></div>
+          </div>
+        </header>
+
+        <div class="interaction-hint">DRAG TO ORBIT / SCROLL TO ZOOM / SELECT AN ASSEMBLY</div>
+
+        <aside class="left-rail">
+          <section class="panel card">
+            <div class="card-heading"><h2>MOBILITY</h2><span class="index">01</span></div>
+            <div class="metric-large"><strong id="speed">0.0</strong><span>KM/H</span></div>
+            <div class="metric-row"><span class="metric-label">WHEEL ROTATION</span><span id="wheel-rate" class="metric-value accent">0 RPM</span></div>
+            <div class="metric-row"><span class="metric-label">DISTANCE TRAVELLED</span><span id="distance" class="metric-value">000.0 M</span></div>
+            <div class="metric-row"><span class="metric-label">DRIVE MOTOR</span><span id="motor-status" class="metric-value green">4 / 4 ACTIVE</span></div>
+            <div class="divider"></div><div class="micro">LIVE TRACTION GRAPH</div><div id="traction-bars" class="traction"></div>
+          </section>
+          <section class="panel card">
+            <div class="card-heading"><h2>POWER SYSTEM</h2><span class="index">02</span></div>
+            <div class="metric-row"><span class="metric-label">BATTERY CAPACITY</span><span id="battery-capacity" class="metric-value accent">86%</span></div>
+            <div class="metric-row"><span class="metric-label">REMAINING ENERGY</span><span id="remaining-energy" class="metric-value">8.42 KWH</span></div>
+            <div class="metric-row"><span class="metric-label">POWER CONSUMPTION</span><span id="power-consumption" class="metric-value">420 W</span></div>
+            <div class="metric-row"><span class="metric-label">BATTERY TEMP</span><span id="battery-temp" class="metric-value">−12.4 °C</span></div>
+            <div class="battery-line" aria-label="Four battery status indicators"><span></span><span></span><span></span><span></span><small class="micro" style="margin-left:auto">BUS A / B</small></div>
+          </section>
+          <section class="panel card">
+            <div class="card-heading"><h2>SUSPENSION</h2><span class="index">03</span></div>
+            <div class="suspension-row"><div class="suspension-meta"><span>FRONT-LEFT</span><b id="susp-fl-status">ACTIVE</b></div><div class="travel-track"><div id="susp-fl" class="travel-fill"></div></div></div>
+            <div class="suspension-row"><div class="suspension-meta"><span>FRONT-RIGHT</span><b id="susp-fr-status">ACTIVE</b></div><div class="travel-track"><div id="susp-fr" class="travel-fill"></div></div></div>
+            <div class="suspension-row"><div class="suspension-meta"><span>REAR-LEFT</span><b id="susp-rl-status">ACTIVE</b></div><div class="travel-track"><div id="susp-rl" class="travel-fill"></div></div></div>
+            <div class="suspension-row"><div class="suspension-meta"><span>REAR-RIGHT</span><b id="susp-rr-status">ACTIVE</b></div><div class="travel-track"><div id="susp-rr" class="travel-fill"></div></div></div>
+          </section>
+        </aside>
+
+        <aside class="right-rail">
+          <section class="panel card">
+            <div class="card-heading"><h2>NAVIGATION</h2><span class="index">04</span></div>
+            <div class="compass-wrap">
+              <div class="compass"><div id="compass-arrow" class="compass-arrow"></div><span class="compass-label n">N</span><span class="compass-label s">S</span><span class="compass-label e">E</span><span class="compass-label w">W</span></div>
+              <div class="nav-stats"><div class="metric-row"><span class="metric-label">HEADING</span><span id="heading" class="metric-value accent">042°</span></div><div class="metric-row"><span class="metric-label">PITCH</span><span id="pitch" class="metric-value">+02.1°</span></div><div class="metric-row"><span class="metric-label">ROLL</span><span id="roll" class="metric-value">−00.8°</span></div><div class="metric-row"><span class="metric-label">COORDS</span><span class="metric-value">26.13°N</span></div><div class="metric-row"><span class="metric-label">NAV STATUS</span><span class="metric-value green">TRACKED</span></div></div>
+            </div>
+          </section>
+          <section class="panel card">
+            <div class="card-heading"><h2>ASSEMBLIES</h2><span class="index">05</span></div>
+            <div id="assembly-grid" class="assembly-grid">
+              <button class="assembly-btn active" data-assembly="hero">HERO</button><button class="assembly-btn" data-assembly="wheels">WHEELS</button><button class="assembly-btn" data-assembly="suspension">SUSPENSION</button><button class="assembly-btn" data-assembly="chassis">CHASSIS</button><button class="assembly-btn" data-assembly="seats">SEATS</button><button class="assembly-btn" data-assembly="control">CONTROL</button><button class="assembly-btn" data-assembly="antenna">ANTENNA</button><button class="assembly-btn" data-assembly="camera">CAMERA</button>
+            </div>
+          </section>
+          <section class="panel card">
+            <div class="card-heading"><h2>DISPLAY</h2><span class="index">06</span></div>
+            <div class="toggle-row"><span class="toggle-label">LABELS</span><button class="toggle-btn active" data-toggle="labels" aria-label="Toggle component labels"></button></div>
+            <div class="toggle-row"><span class="toggle-label">EXPLODED</span><button class="toggle-btn" data-toggle="exploded" aria-label="Toggle exploded view"></button></div>
+            <div class="toggle-row"><span class="toggle-label">WHEEL SPIN</span><button class="toggle-btn active" data-toggle="wheelSpin" aria-label="Toggle wheel spin"></button></div>
+            <div class="toggle-row"><span class="toggle-label">TURNTABLE</span><button class="toggle-btn" data-toggle="turntable" aria-label="Toggle turntable"></button></div>
+          </section>
+          <section class="panel card">
+            <div class="card-heading"><h2>SUBSYSTEMS</h2><span class="index">07</span></div>
+            <div class="subsystem-list"><div class="subsystem-row"><i class="sub-dot"></i>WHEEL ASSEMBLY<span class="sub-status">NOMINAL</span></div><div class="subsystem-row"><i class="sub-dot"></i>SUSPENSION SYSTEM<span class="sub-status">ACTIVE</span></div><div class="subsystem-row"><i class="sub-dot"></i>CHASSIS FRAME<span class="sub-status">LOCKED</span></div><div class="subsystem-row"><i class="sub-dot"></i>POWER SYSTEM<span class="sub-status">BUS A/B</span></div><div class="subsystem-row"><i class="sub-dot"></i>NAVIGATION UNIT<span class="sub-status">TRACKED</span></div><div class="subsystem-row"><i class="sub-dot"></i>COMMUNICATION ARRAY<span class="sub-status">LINKED</span></div></div>
+          </section>
+        </aside>
+
+        <div class="mode-strip"><div class="mode-kicker">OPERATING MODE</div><div id="mode-name" class="mode-name">ARRIVAL</div><div id="mode-description" class="mode-description">Rover enters the lunar test field / suspension response nominal</div></div>
+
+        <section class="panel operation-log" aria-label="Mission operation log">
+          <div class="operation-head"><div class="operation-title"><span>08</span> / OPERATION LOG</div><button id="play-btn" class="play-btn" aria-label="Pause mission"><i class="play-icon pause"></i><span>PAUSE</span></button></div>
+          <div id="timeline-wrap" class="timeline-wrap"><div id="timeline-track" class="timeline-track"><div id="timeline-progress" class="timeline-progress"></div><div id="timeline-thumb" class="timeline-thumb"></div><div class="timeline-marker" style="left:0%"><b>ARRIVAL</b></div><div class="timeline-marker" style="left:16%"><b>WHEELS</b></div><div class="timeline-marker" style="left:32%"><b>CHASSIS</b></div><div class="timeline-marker" style="left:48%"><b>CONTROL</b></div><div class="timeline-marker" style="left:64%"><b>ANTENNA</b></div><div class="timeline-marker" style="left:76%"><b>TEARDOWN</b></div><div class="timeline-marker" style="left:92%"><b>HERO</b></div></div></div>
+          <div class="timeline-meta"><strong id="operation-description">ENTRY VECTOR / LOAD BALANCE CHECK</strong><span id="timecode">00:00.00 / 00:25.00</span></div>
+          <div id="operator-actions" class="operator-actions"><i class="operator-action active"></i><i class="operator-action"></i><i class="operator-action"></i><i class="operator-action"></i><i class="operator-action"></i><i class="operator-action"></i><i class="operator-action"></i><i class="operator-action"></i></div>
+        </section>
+
+        <div id="label-layer" class="label-layer"></div>
+        <div id="toast" class="toast">ASSEMBLY SELECTED</div>
+        <footer class="footer"><span>APOLLO LUNAR ROVER · PROCEDURAL MODEL · 4 WHEELS · 4 MOTORS · 1 ANTENNA</span><span>LUNAR EXPLORATION SYSTEMS · ENGINEERING DIVISION //////</span></footer>
+      </div>
+      <div id="loading-cover" class="loading-cover"><div class="loader-box"><div class="loader-kicker">APOLLO / ENGINEERING DIVISION</div><div class="loader-title">INITIALIZING LRV-001</div><div class="loader-line"><i></i></div><div class="loader-caption">PROCEDURAL SYSTEMS / STANDBY</div></div></div>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
