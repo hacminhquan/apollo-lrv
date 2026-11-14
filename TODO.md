@@ -49,7 +49,7 @@
 - [x] Diagnostics được đăng ký cho mã frontend; không còn lỗi actionable được phát hiện trong kiểm tra sau patch.
 - [x] `pnpm build` tạo output có `dist/index.html`; dev server nghe trên `0.0.0.0:3000` và `/manus-routes.json` trả JSON 200 đúng schema.
 - [x] Preview desktop 1440×900 và mobile 390×844 đã render được hero composition, panel/timeline và responsive layout; preview sau patch xác nhận labels/camera path không phá bố cục.
-- [ ] Commit intended files lên `origin/main` và xác nhận checkpoint SHA; chưa publish công khai.
+- [x] Commit intended files lên `origin/main` và xác nhận checkpoint SHA `d090c4cacc0c6aa65794636cf159c976b57b492f`; chưa publish công khai.
 
 ## Evidence note
 
